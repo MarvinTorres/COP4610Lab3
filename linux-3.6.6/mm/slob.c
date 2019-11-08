@@ -628,3 +628,13 @@ void __init kmem_cache_init_late(void)
 {
 	slab_state = FULL;
 }
+
+asmlinkage long sys_get_slob_amt_claimed(void)
+{
+	return 0L;	
+}
+
+asmlinkage long sys_get_slob_amt_free(void)
+{
+	return 0L;	
+}
