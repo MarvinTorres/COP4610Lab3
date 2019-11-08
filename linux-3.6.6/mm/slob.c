@@ -88,6 +88,7 @@ typedef s16 slobidx_t;
 typedef s32 slobidx_t;
 #endif
 
+//This is the struct of a block, not a page. slobidx_t units is the size of the block.
 struct slob_block {
 	slobidx_t units;
 };
@@ -122,6 +123,11 @@ static inline void clear_slob_page_free(struct page *sp)
 	__ClearPageSlobFree(sp);
 }
 
+//SLOB_UNITS(size in bytes) returns 1 if size = 1. It returns 2 if size = SLOB_UNIT + 1. 
+//It returns 1 if size = SLOB_UNIT because one block can be completely filled.
+//SLOB_UNIT is the size of a struct so its result might be greater than the sum of
+//the sizes of its component variables. This is due to padding done by the compiler. 
+//But it seems to be the size of a block.
 #define SLOB_UNIT sizeof(slob_t)
 #define SLOB_UNITS(size) (((size) + SLOB_UNIT - 1)/SLOB_UNIT)
 #define SLOB_ALIGN L1_CACHE_BYTES
@@ -171,7 +177,7 @@ static slobidx_t slob_units(slob_t *s)
  */
 static slob_t *slob_next(slob_t *s)
 {
-	slob_t *base = (slob_t *)((unsigned long)s & PAGE_MASK);
+	slob_t *base = (slob_t *)((unsigned long)s & PAGE_MASK); //These are pointers so they can be manipulated like numbers!
 	slobidx_t next;
 
 	if (s[0].units < 0)
@@ -220,7 +226,8 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 {
 	slob_t *prev, *cur, *aligned = NULL;
 	int delta = 0, units = SLOB_UNITS(size);
-
+	//sp is the page.
+	//sp->freelist is the head of a linked list of free blocks within the page.
 	for (prev = NULL, cur = sp->freelist; ; prev = cur, cur = slob_next(cur)) {
 		slobidx_t avail = slob_units(cur);
 
@@ -284,6 +291,11 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 
 	spin_lock_irqsave(&slob_lock, flags);
 	/* Iterate through each partially free page, try to find room */
+	//each of slob_list's elements point to a linked list of blocks. Lab 3 wants to use list with the shortest pages.
+	//size is the number of bytes needed to fulfill request
+	//SLOB_UNITS(size) is the number of blocks needed to fulfill request
+	//sp is the current page (a linked list of blocks)
+	//sp->units is the size of the free part of the page in bytes
 	list_for_each_entry(sp, slob_list, list) {
 #ifdef CONFIG_NUMA
 		/*
@@ -294,8 +306,8 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 			continue;
 #endif
 		/* Enough room on this page? */
-		if (sp->units < SLOB_UNITS(size))
-			continue;
+		if (sp->units < SLOB_UNITS(size)) //note that a hole may be a set of free areas interspersed in the page
+			continue;		  //not one contiguous free area
 
 		/* Attempt to alloc */
 		prev = sp->list.prev;
@@ -315,13 +327,15 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 
 	/* Not enough space: must allocate a new page */
 	if (!b) {
+		//Create another page. b is the address of the start of the new page
 		b = slob_new_pages(gfp & ~__GFP_ZERO, 0, node);
 		if (!b)
-			return NULL;
+			return NULL; //another page could not be created
 		sp = virt_to_page(b);
 		__SetPageSlab(sp);
 
 		spin_lock_irqsave(&slob_lock, flags);
+		
 		sp->units = SLOB_UNITS(PAGE_SIZE);
 		sp->freelist = b;
 		INIT_LIST_HEAD(&sp->list);
@@ -513,7 +527,6 @@ struct kmem_cache *__kmem_cache_create(const char *name, size_t size,
 {
 	struct kmem_cache *c;
 
-	c = slob_alloc(sizeof(struct kmem_cache),
 		GFP_KERNEL, ARCH_KMALLOC_MINALIGN, -1);
 
 	if (c) {
