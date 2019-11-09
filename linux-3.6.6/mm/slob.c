@@ -88,11 +88,25 @@ typedef s16 slobidx_t;
 typedef s32 slobidx_t;
 #endif
 
-//This is the struct of a block, not a page. slobidx_t units is the size of the block.
+//This is the struct of a block. slobidx_t units is the size of the block in bytes.
 struct slob_block {
 	slobidx_t units;
 };
 typedef struct slob_block slob_t;
+
+/*
+ * This table stores the history of requested bytes for the past 100 times that the allocator 
+ * fragmented memory to satisfy a request.
+ */
+#define HISTORY_SIZE 100
+long request_size_history[HISTORY_SIZE];
+int head = 0;
+
+/*
+ * This table stores the history of bytes in free_slob_small for the past 100 times that the allocator 
+ * fragmented memory to satisfy a request.
+ */
+//long free_slob_small_size_history[100];
 
 /*
  * All partially free slob pages go on these lists.
@@ -102,6 +116,13 @@ typedef struct slob_block slob_t;
 static LIST_HEAD(free_slob_small);
 static LIST_HEAD(free_slob_medium);
 static LIST_HEAD(free_slob_large);
+
+static void add_to_request_size_history(size_t size)
+{
+	long item = (long) size;
+	request_size_history[head] = item;
+	head = ((head + 1) % HISTORY_SIZE);
+}
 
 /*
  * slob_page_free: true for pages on free_slob_pages list.
@@ -177,7 +198,7 @@ static slobidx_t slob_units(slob_t *s)
  */
 static slob_t *slob_next(slob_t *s)
 {
-	slob_t *base = (slob_t *)((unsigned long)s & PAGE_MASK); //These are pointers so they can be manipulated like numbers!
+	slob_t *base = (slob_t *)((unsigned long)s & PAGE_MASK);
 	slobidx_t next;
 
 	if (s[0].units < 0)
@@ -226,8 +247,7 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 {
 	slob_t *prev, *cur, *aligned = NULL;
 	int delta = 0, units = SLOB_UNITS(size);
-	//sp is the page.
-	//sp->freelist is the head of a linked list of free blocks within the page.
+	//freelist points to a list of free blocks
 	for (prev = NULL, cur = sp->freelist; ; prev = cur, cur = slob_next(cur)) {
 		slobidx_t avail = slob_units(cur);
 
@@ -253,7 +273,7 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 					set_slob(prev, slob_units(prev), next);
 				else
 					sp->freelist = next;
-			} else { /* fragment */
+			} else { /* fragment */				
 				if (prev)
 					set_slob(prev, slob_units(prev), cur + units);
 				else
@@ -278,12 +298,12 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 {
 	struct page *sp;
 	struct list_head *prev;
-	struct list_head *slob_list;
+	struct list_head *slob_list;		//pointer to the first partially free page in a list of partially free pages.
 	slob_t *b = NULL;
 	unsigned long flags;
 
 	if (size < SLOB_BREAK1)
-		slob_list = &free_slob_small;
+		slob_list = &free_slob_small;	//free_slob_small is a list of partially free pages, 256 bytes long.
 	else if (size < SLOB_BREAK2)
 		slob_list = &free_slob_medium;
 	else
@@ -291,11 +311,6 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 
 	spin_lock_irqsave(&slob_lock, flags);
 	/* Iterate through each partially free page, try to find room */
-	//each of slob_list's elements point to a linked list of blocks. Lab 3 wants to use list with the shortest pages.
-	//size is the number of bytes needed to fulfill request
-	//SLOB_UNITS(size) is the number of blocks needed to fulfill request
-	//sp is the current page (a linked list of blocks)
-	//sp->units is the size of the free part of the page in bytes
 	list_for_each_entry(sp, slob_list, list) {
 #ifdef CONFIG_NUMA
 		/*
@@ -306,8 +321,8 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 			continue;
 #endif
 		/* Enough room on this page? */
-		if (sp->units < SLOB_UNITS(size)) //note that a hole may be a set of free areas interspersed in the page
-			continue;		  //not one contiguous free area
+		if (sp->units < SLOB_UNITS(size))
+			continue;		  
 
 		/* Attempt to alloc */
 		prev = sp->list.prev;
@@ -327,10 +342,13 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 
 	/* Not enough space: must allocate a new page */
 	if (!b) {
-		//Create another page. b is the address of the start of the new page
+		/*
+		 * Save bytes requested to history
+		 */
+		add_to_request_size_history(size);
 		b = slob_new_pages(gfp & ~__GFP_ZERO, 0, node);
 		if (!b)
-			return NULL; //another page could not be created
+			return NULL;
 		sp = virt_to_page(b);
 		__SetPageSlab(sp);
 
@@ -644,7 +662,14 @@ void __init kmem_cache_init_late(void)
 
 asmlinkage long sys_get_slob_amt_claimed(void)
 {
-	return 0L;	
+	long average = 0L;
+	long sum = 0L;
+	int i;
+	for (i = 0; i < HISTORY_SIZE; i++) {
+		sum += request_size_history[i];
+	}
+	average = sum / HISTORY_SIZE; //Intentionally truncated
+	return average;	
 }
 
 asmlinkage long sys_get_slob_amt_free(void)
