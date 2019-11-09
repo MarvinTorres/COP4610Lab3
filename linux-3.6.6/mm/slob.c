@@ -544,7 +544,7 @@ struct kmem_cache *__kmem_cache_create(const char *name, size_t size,
 	size_t align, unsigned long flags, void (*ctor)(void *))
 {
 	struct kmem_cache *c;
-
+	c = slob_alloc(sizeof(struct kmem_cache),
 		GFP_KERNEL, ARCH_KMALLOC_MINALIGN, -1);
 
 	if (c) {
