@@ -101,7 +101,7 @@ typedef struct slob_block slob_t;
 #define HISTORY_SIZE 100
 long request_size_history[HISTORY_SIZE];
 int head = 0;
-
+int num_empty_elements_request_size_history = 100;
 /*
  * This table stores the history of bytes in free_slob_small for the past 100 times that the allocator 
  * fragmented memory to satisfy a request.
@@ -120,6 +120,7 @@ static LIST_HEAD(free_slob_large);
 static void add_to_request_size_history(size_t size)
 {
 	long item = (long) size;
+	if (num_empty_elements_request_size_history > 0) num_empty_elements_request_size_history--;
 	request_size_history[head] = item;
 	head = ((head + 1) % HISTORY_SIZE);
 }
@@ -665,10 +666,11 @@ asmlinkage long sys_get_slob_amt_claimed(void)
 	long average = 0L;
 	long sum = 0L;
 	int i;
-	for (i = 0; i < HISTORY_SIZE; i++) {
+	int count_elements = HISTORY_SIZE - num_empty_elements_request_size_history;
+	for (i = 0; i < count_elements; i++) {
 		sum += request_size_history[i];
 	}
-	average = sum / HISTORY_SIZE; //Intentionally truncated
+	average = sum / count_elements; //Intentionally truncated
 	return average;	
 }
 
