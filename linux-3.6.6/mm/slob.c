@@ -101,12 +101,14 @@ typedef struct slob_block slob_t;
 #define HISTORY_SIZE 100
 long request_size_history[HISTORY_SIZE];
 int head = 0;
-int num_empty_elements_request_size_history = 100;
+int num_empty_elements_request_size_history = HISTORY_SIZE;
 /*
  * This table stores the history of bytes in free_slob_small for the past 100 times that the allocator 
  * fragmented memory to satisfy a request.
  */
-//long free_slob_small_size_history[100];
+long free_slob_small_size_history[HISTORY_SIZE];
+int head2 = 0;
+int num_empty_elements_free_slob_small_size_history = HISTORY_SIZE;
 
 /*
  * All partially free slob pages go on these lists.
@@ -123,6 +125,14 @@ static void add_to_request_size_history(size_t size)
 	if (num_empty_elements_request_size_history > 0) num_empty_elements_request_size_history--;
 	request_size_history[head] = item;
 	head = ((head + 1) % HISTORY_SIZE);
+}
+
+static void add_to_free_slob_small_size_history(size_t size)
+{
+	long item = (long) size;
+	if (num_empty_elements_free_slob_small_size_history > 0) num_empty_elements_free_slob_small_size_history--;
+	free_slob_small_size_history[head2] = item;
+	head2 = ((head + 1) % HISTORY_SIZE);
 }
 
 /*
@@ -344,9 +354,10 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 	/* Not enough space: must allocate a new page */
 	if (!b) {
 		/*
-		 * Save bytes requested to history
+		 * Save bytes requested and free slob small size to history
 		 */
 		add_to_request_size_history(size);
+		add_to_free_slob_small_size_history(/*TODO: Figure out what the heck to put here*/);
 		b = slob_new_pages(gfp & ~__GFP_ZERO, 0, node);
 		if (!b)
 			return NULL;
@@ -676,5 +687,13 @@ asmlinkage long sys_get_slob_amt_claimed(void)
 
 asmlinkage long sys_get_slob_amt_free(void)
 {
-	return 0L;	
+	long average = 0L;
+	long sum = 0L;
+	int i;
+	int count_elements = HISTORY_SIZE - num_empty_elements_free_slob_small_size_history;
+	for (i = 0; i < count_elements; i++) {
+		sum += free_slob_small_size_history[i];
+	}
+	average = sum / count_elements; //Intentionally truncated
+	return average;		
 }
