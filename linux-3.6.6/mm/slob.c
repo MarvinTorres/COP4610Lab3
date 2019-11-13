@@ -119,6 +119,10 @@ static LIST_HEAD(free_slob_small);
 static LIST_HEAD(free_slob_medium);
 static LIST_HEAD(free_slob_large);
 
+/*
+ *
+ *
+ */
 static void add_to_request_size_history(size_t size)
 {
 	long item = (long) size;
@@ -127,6 +131,10 @@ static void add_to_request_size_history(size_t size)
 	head = ((head + 1) % HISTORY_SIZE);
 }
 
+/*
+ *
+ *
+ */
 static void add_to_free_slob_small_size_history(size_t size)
 {
 	long item = (long) size;
@@ -155,11 +163,6 @@ static inline void clear_slob_page_free(struct page *sp)
 	__ClearPageSlobFree(sp);
 }
 
-//SLOB_UNITS(size in bytes) returns 1 if size = 1. It returns 2 if size = SLOB_UNIT + 1. 
-//It returns 1 if size = SLOB_UNIT because one block can be completely filled.
-//SLOB_UNIT is the size of a struct so its result might be greater than the sum of
-//the sizes of its component variables. This is due to padding done by the compiler. 
-//But it seems to be the size of a block.
 #define SLOB_UNIT sizeof(slob_t)
 #define SLOB_UNITS(size) (((size) + SLOB_UNIT - 1)/SLOB_UNIT)
 #define SLOB_ALIGN L1_CACHE_BYTES
@@ -312,6 +315,7 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 	struct list_head *slob_list;		//pointer to the first partially free page in a list of partially free pages.
 	slob_t *b = NULL;
 	unsigned long flags;
+	unsigned long total_free_blocks_free_slob_small = 0L;
 
 	if (size < SLOB_BREAK1)
 		slob_list = &free_slob_small;	//free_slob_small is a list of partially free pages, 256 bytes long.
@@ -331,6 +335,10 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 		if (node != -1 && page_to_nid(sp) != node)
 			continue;
 #endif
+		/* Record number of free blocks in current page if small slob pages are being iterated */
+		if (slob_list == &free_slob_small) {
+			total_free_blocks_free_slob_small += (long) (sp->units);
+		}
 		/* Enough room on this page? */
 		if (sp->units < SLOB_UNITS(size))
 			continue;		  
@@ -353,11 +361,13 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 
 	/* Not enough space: must allocate a new page */
 	if (!b) {
-		/*
-		 * Save bytes requested and free slob small size to history
-		 */
-		add_to_request_size_history(size);
-		add_to_free_slob_small_size_history(/*TODO: Figure out what the heck to put here*/);
+		if (slob_list == &free_slob_small) { //track small allocations only
+			/*
+			 * Save current bytes requested and free slob small size to history
+			 */
+			add_to_request_size_history(size);
+			add_to_free_slob_small_size_history(total_free_blocks_free_slob_small);
+		}
 		b = slob_new_pages(gfp & ~__GFP_ZERO, 0, node);
 		if (!b)
 			return NULL;
