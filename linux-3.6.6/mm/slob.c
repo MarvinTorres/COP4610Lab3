@@ -335,7 +335,7 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 #endif
 		/* Record number of free blocks in current page if small slob pages are being iterated */
 		if (slob_list == &free_slob_small) {
-			total_free_blocks_free_slob_small += (long) slob_units(sp->units);
+			total_free_blocks_free_slob_small += (long) (sp->units);
 		}
 		/* Enough room on this page? */
 		if (sp->units < SLOB_UNITS(size))
