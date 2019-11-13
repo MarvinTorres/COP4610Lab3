@@ -120,8 +120,7 @@ static LIST_HEAD(free_slob_medium);
 static LIST_HEAD(free_slob_large);
 
 /*
- *
- *
+ * Add the current request size to the history of the past 100 request sizes.
  */
 static void add_to_request_size_history(size_t size)
 {
@@ -132,15 +131,14 @@ static void add_to_request_size_history(size_t size)
 }
 
 /*
- *
- *
- */
-static void add_to_free_slob_small_size_history(size_t size)
+ * Add the current number of free blocks in the small page list to the history of the past 100 numbers.
+ */ 
+static void add_to_free_slob_small_size_history(long size)
 {
-	long item = (long) size;
+	long item = size;
 	if (num_empty_elements_free_slob_small_size_history > 0) num_empty_elements_free_slob_small_size_history--;
 	free_slob_small_size_history[head2] = item;
-	head2 = ((head + 1) % HISTORY_SIZE);
+	head2 = ((head2 + 1) % HISTORY_SIZE);
 }
 
 /*
