@@ -259,7 +259,7 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 {
 	slob_t *prev, *cur, *aligned = NULL;
 	int delta = 0, units = SLOB_UNITS(size);
-	//freelist points to a list of free blocks
+	//freelist points to a list of free blocks within the page. A page in this function must have at least one freelist.
 	for (prev = NULL, cur = sp->freelist; ; prev = cur, cur = slob_next(cur)) {
 		slobidx_t avail = slob_units(cur);
 
@@ -311,7 +311,7 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 	struct page *sp;
 	struct list_head *prev;
 	struct list_head *slob_list;		//pointer to the first partially free page in a list of partially free pages.
-	slob_t *b = NULL;
+	slob_t *b = NULL;			//pointer to the allocated page. Stays null if no page could be allocated.
 	unsigned long flags;
 	unsigned long total_free_blocks_free_slob_small = 0L;
 
@@ -335,7 +335,7 @@ static void *slob_alloc(size_t size, gfp_t gfp, int align, int node)
 #endif
 		/* Record number of free blocks in current page if small slob pages are being iterated */
 		if (slob_list == &free_slob_small) {
-			total_free_blocks_free_slob_small += (long) (sp->units);
+			total_free_blocks_free_slob_small += (long) slob_units(sp->units);
 		}
 		/* Enough room on this page? */
 		if (sp->units < SLOB_UNITS(size))
