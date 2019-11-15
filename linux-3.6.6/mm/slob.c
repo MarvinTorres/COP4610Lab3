@@ -260,7 +260,11 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 	slob_t *prev, *cur, *aligned = NULL;
 	int delta = 0, units = SLOB_UNITS(size);
 	
-	slob_t *min_fit = NULL; //This is the slob that will be allocated.
+	slob_t *min_fit = NULL; 	//This is the slob that will be allocated.
+	int min_delta = 0;		//delta when min_fit was updated
+	slob_t *min_aligned = NULL;	//aligned when min_fit was updated
+	slob_t *min_prev = NULL;	//prev when min_fit was updated
+	
 	//freelist points to a list of free blocks within the page. A page in this function must have at least one freelist.
 	for (prev = NULL, cur = sp->freelist; ; prev = cur, cur = slob_next(cur)) {
 		slobidx_t avail = slob_units(cur);
@@ -271,7 +275,12 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 		}
 		if (avail >= units + delta) { /* room enough? */
 			if (!min_fit || avail < slob_units(min_fit)) { //!min_fit must be the first check!
-				min_fit = cur;	
+				min_fit = cur;
+				if (align) {
+					min_delta = delta;
+					min_aligned = aligned;
+					min_prev = prev;
+				}
 			}
 		}
 		if (slob_last(cur)) {
@@ -280,30 +289,25 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 			if (!min_fit) { //Was no suitable slob found?
 				return NULL; 
 			}		
-			
-			if (align) {
-				aligned = (slob_t *)ALIGN((unsigned long)min_fit, align);
-				delta = aligned - min_fit;
-			}
 
-			if (delta) { /* need to fragment head to align? */
+			if (min_delta) { /* need to fragment head to align? */
 				next = slob_next(min_fit);
-				set_slob(aligned, avail - delta, next);
-				set_slob(min_fit, delta, aligned);
-				prev = min_fit;
-				min_fit = aligned;
+				set_slob(min_aligned, avail - min_delta, next);
+				set_slob(min_fit, min_delta, min_aligned);
+				min_prev = min_fit;
+				min_fit = min_aligned;
 				avail = slob_units(min_fit);
 			}
 
 			next = slob_next(min_fit);
 			if (avail == units) { /* exact fit? unlink. */
-				if (prev)
-					set_slob(prev, slob_units(prev), next);
+				if (min_prev)
+					set_slob(min_prev, slob_units(min_prev), next);
 				else
 					sp->freelist = next;
 			} else { /* fragment */				
 				if (prev)
-					set_slob(prev, slob_units(prev), min_fit + units);
+					set_slob(min_prev, slob_units(min_prev), min_fit + units);
 				else
 					sp->freelist = min_fit + units;
 				set_slob(min_fit + units, avail - units, next);
