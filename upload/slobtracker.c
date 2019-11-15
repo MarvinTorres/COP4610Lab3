@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #define NUM_BLOCKS 1000000
+#define NUM_VARS 3
 
 int main()
 {
@@ -42,20 +43,19 @@ int main()
 		a = (int*)malloc(NUM_BLOCKS * i);
 		b = (int*)malloc(NUM_BLOCKS * i);
 		c = (int*)malloc(NUM_BLOCKS * i);
-		printf("%sAllocating 3 x %d x %d blocks%s\n", line_short, NUM_BLOCKS, i, line_short);
+		printf("%sAllocating %d x %d x %d blocks%s\n", line_short, NUM_VARS, NUM_BLOCKS, i, line_short);
 		long int avg_bytes_requested = syscall(543) + 100;
 		printf("%-50s%10ld\n", avg_bytes_requested_txt, avg_bytes_requested);
 		long int avg_free_in_pages = syscall(544) + 100;
 		printf("%-50s%10ld\n", avg_free_in_pages_txt, avg_free_in_pages);
 		printf("%s\n", line);
+		/*
+		 * Free up allocated space.
+		 */
+		free(a);
+		free(b);
+		free(c);
 	}
-	
-	/*
-	 * Free up allocated space.
-	 */ 
-	free(a);
-	free(b);
-	free(c);
 	
 	return 0;
 }

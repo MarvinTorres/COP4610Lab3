@@ -1,0 +1,40 @@
+------------------Allocating 3 x 1000000 x 0 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
+------------------Allocating 3 x 1000000 x 1 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
+------------------Allocating 3 x 1000000 x 2 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
+------------------Allocating 3 x 1000000 x 3 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
+------------------Allocating 3 x 1000000 x 4 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
+------------------Allocating 3 x 1000000 x 5 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
+------------------Allocating 3 x 1000000 x 6 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
+------------------Allocating 3 x 1000000 x 7 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
+------------------Allocating 3 x 1000000 x 8 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
+------------------Allocating 3 x 1000000 x 9 blocks------------------
+Average number of bytes requested:                       309
+Average number of free bytes in searched pages:       522534
+-------------------------------------------------------------
