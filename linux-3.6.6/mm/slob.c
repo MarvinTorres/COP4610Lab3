@@ -279,8 +279,8 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 				if (align) {
 					min_delta = delta;
 					min_aligned = aligned;
-					min_prev = prev;
 				}
+				min_prev = prev;
 			}
 		}
 		if (slob_last(cur)) {
