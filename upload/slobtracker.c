@@ -34,7 +34,7 @@ int main()
 	 *                          in memory.
 	 */
 	
-	for (i = 0; i <= 10; i++) {
+	for (i = 0; i < 10; i++) {
 		/*
 		 * Allocate blocks to starve memory. Number of bytes allocated will be increased by 2x, 3x, 4x,
 		 * etc. every loop iteration.
