@@ -58,4 +58,4 @@ Figure 1.2.1: Results of running slobtracker using slob.c (modified).
 2 - Comparison of Results
 This section analyzes and explains the differences in measurements between kernels regarding memory management behavior.
 
-2.1 - 
+The differences between the results lies with the first-fit and best-fit algorithms used by the unmodfiied and modified slob allocators, respectively. The one that stands out is that the average number of free bytes in the searched pages is lower in the modified allocator than in the unmodified allocator. This decrease stems from the higher rate of internal fragmentation that follows from using a first-fit approach. Namely, 
