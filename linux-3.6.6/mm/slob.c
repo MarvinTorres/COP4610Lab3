@@ -304,7 +304,7 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 			/*
 			 * I am unsure how deltas and alignment works, but I am pretty sure that this is 
 			 * the part where the slob allocator allocates slobs. I cop
-			 /*
+			 */
 			slob_t *next;
 			
 			if (!min_fit) { //Was no suitable slob found?
