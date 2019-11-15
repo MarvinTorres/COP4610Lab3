@@ -259,6 +259,8 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 {
 	slob_t *prev, *cur, *aligned = NULL;
 	int delta = 0, units = SLOB_UNITS(size);
+	
+	slob_t min_fit = NULL; //This is the slob that will be allocated.
 	//freelist points to a list of free blocks within the page. A page in this function must have at least one freelist.
 	for (prev = NULL, cur = sp->freelist; ; prev = cur, cur = slob_next(cur)) {
 		slobidx_t avail = slob_units(cur);
@@ -268,18 +270,26 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 			delta = aligned - cur;
 		}
 		if (avail >= units + delta) { /* room enough? */
+			if (!min_fit || avail < slob_units(min_fit)) { //!min_fit must be the first check!
+				min_fit = cur;	
+			}
+		}
+		if (slob_last(cur))
+			if (!min_fit) { //Was no suitable slob found?
+				return NULL; 
+			}		
 			slob_t *next;
 
 			if (delta) { /* need to fragment head to align? */
-				next = slob_next(cur);
+				next = slob_next(min_fit);
 				set_slob(aligned, avail - delta, next);
-				set_slob(cur, delta, aligned);
-				prev = cur;
-				cur = aligned;
-				avail = slob_units(cur);
+				set_slob(min_fit, delta, aligned);
+				prev = min_fit;
+				min_fit = aligned;
+				avail = slob_units(min_fit);
 			}
 
-			next = slob_next(cur);
+			next = slob_next(min_fit);
 			if (avail == units) { /* exact fit? unlink. */
 				if (prev)
 					set_slob(prev, slob_units(prev), next);
@@ -287,19 +297,17 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 					sp->freelist = next;
 			} else { /* fragment */				
 				if (prev)
-					set_slob(prev, slob_units(prev), cur + units);
+					set_slob(prev, slob_units(prev), min_fit + units);
 				else
-					sp->freelist = cur + units;
-				set_slob(cur + units, avail - units, next);
+					sp->freelist = min_fit + units;
+				set_slob(min_fit + units, avail - units, next);
 			}
 
 			sp->units -= units;
 			if (!sp->units)
 				clear_slob_page_free(sp);
-			return cur;
+			return min_fit;
 		}
-		if (slob_last(cur))
-			return NULL;
 	}
 }
 
