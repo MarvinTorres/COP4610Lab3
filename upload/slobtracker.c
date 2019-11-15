@@ -15,6 +15,10 @@ int main()
 	int* a;
 	int* b;
 	int* c;
+
+	char avg_bytes_requested_txt[100] = "Average number of bytes requested:";
+	char avg_free_in_pages_txt[100] = "Average number of free bytes in searched pages:";
+	char line[100] = "-------------------------------------------------------------";
 	/*
 	 * Allocate bytes to starve memory.
 	 */
@@ -23,8 +27,8 @@ int main()
 	c = (int*)malloc(NUM_BYTES);
 	
         /*
-	 * Print out average of bytes requested over a 100 instance period
-	 * Also print out average of free bytes in each searched page
+	 * Print out average number of bytes requested over a 100 request span
+	 * Also print out average number of free bytes in each searched page over a 100 request span
 	 *
 	 * This will show the number of free bytes that could not be allocated
 	 * due to external and internal fragmentation.
@@ -34,10 +38,12 @@ int main()
 	 * External fragmentation - Free blocks can't be allocated because they are not contiguously laid out
 	 *                          in memory.
 	 */
-	long int amma = syscall(543);
-	printf("System call sys_get_slob_amt_claimed returned %ld\n", amma);
-	amma = syscall(544);
-	printf("System call sys_get_slob_amt_free returned %ld\n", amma);
+	printf("%s\n", line);
+	long int avg_bytes_requested = syscall(543) + 100;
+	printf("%-50s%10ld\n", avg_bytes_requested_txt, avg_bytes_requested);
+	long int avg_free_in_pages = syscall(544) + 100;
+	printf("%-50s%10ld\n", avg_free_in_pages_txt, avg_free_in_pages);
+	printf("%s\n", line);
 	
 	/*
 	 * Free up allocated space.
