@@ -274,11 +274,12 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 				min_fit = cur;	
 			}
 		}
-		if (slob_last(cur))
+		if (slob_last(cur)) {
+			slob_t *next;
+			
 			if (!min_fit) { //Was no suitable slob found?
 				return NULL; 
 			}		
-			slob_t *next;
 
 			if (delta) { /* need to fragment head to align? */
 				next = slob_next(min_fit);
