@@ -4,7 +4,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
-#define NUM_BlOCKS 1000000
+#define NUM_BLOCKS 1000000
 
 int main()
 {
@@ -42,7 +42,7 @@ int main()
 		a = (int*)malloc(NUM_BLOCKS * i);
 		b = (int*)malloc(NUM_BLOCKS * i);
 		c = (int*)malloc(NUM_BLOCKS * i);
-		printf("%sAllocating %d x %d bytes%s\n", line_short, NUM_BLOCKS, i, line_short);
+		printf("%sAllocating 3 x %d x %d blocks%s\n", line_short, NUM_BLOCKS, i, line_short);
 		long int avg_bytes_requested = syscall(543) + 100;
 		printf("%-50s%10ld\n", avg_bytes_requested_txt, avg_bytes_requested);
 		long int avg_free_in_pages = syscall(544) + 100;
