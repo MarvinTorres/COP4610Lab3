@@ -280,6 +280,11 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 			if (!min_fit) { //Was no suitable slob found?
 				return NULL; 
 			}		
+			
+			if (align) {
+				aligned = (slob_t *)ALIGN((unsigned long)min_fit, align);
+				delta = aligned - min_fit;
+			}
 
 			if (delta) { /* need to fragment head to align? */
 				next = slob_next(min_fit);
