@@ -260,7 +260,7 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 	slob_t *prev, *cur, *aligned = NULL;
 	int delta = 0, units = SLOB_UNITS(size);
 	
-	slob_t min_fit = NULL; //This is the slob that will be allocated.
+	slob_t *min_fit = NULL; //This is the slob that will be allocated.
 	//freelist points to a list of free blocks within the page. A page in this function must have at least one freelist.
 	for (prev = NULL, cur = sp->freelist; ; prev = cur, cur = slob_next(cur)) {
 		slobidx_t avail = slob_units(cur);
