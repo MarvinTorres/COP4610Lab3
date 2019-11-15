@@ -254,6 +254,12 @@ static void slob_free_pages(void *b, int order)
 
 /*
  * Allocate a slob block within a given slob_page sp.
+ * MODIFIED: This function used a first-fit approach to finding a free slob. It originally found and 
+ * allocated the first free slob found in the page. 
+ 
+ * Now it uses a best-fit approach to finding a free slob. Namely, it now keeps track of the minimum fitting slob found while 
+ * searching through the slobs. After reaching the final slob, it immediately knows which is the best-fitting
+ * slob (the smallest one that fits the request) and allocates it.
  */
 static void *slob_page_alloc(struct page *sp, size_t size, int align)
 {
@@ -274,7 +280,18 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 			delta = aligned - cur;
 		}
 		if (avail >= units + delta) { /* room enough? */
-			if (!min_fit || avail < slob_units(min_fit)) { //!min_fit must be the first check!
+			/*
+			 * Compare current fitting slob with the minimum fitting slob. If the current one uses less 
+			 * space than the minimum, then it becomes the new minimum. Else the minimum remains unchanged.
+			 */
+			if (!min_fit || avail < slob_units(min_fit)) {
+				/*
+				 * min_delta, min_aligned, and min_prev have to be made because the variables
+				 * used in the original code (delta, aligned, prev)
+				 * are relative to the current slob, may change between slobs, and are
+				 * used in the allocation code. 
+				 * So we have to archive these values for the minimum fitting slob to use in the allocation code.
+				 */
 				min_fit = cur;
 				if (align) {
 					min_delta = delta;
@@ -283,7 +300,11 @@ static void *slob_page_alloc(struct page *sp, size_t size, int align)
 				min_prev = prev;
 			}
 		}
-		if (slob_last(cur)) {
+		if (slob_last(cur)) { //We reached the end of the page, now to allocate the minimum fitting slob
+			/*
+			 * I am unsure how deltas and alignment works, but I am pretty sure that this is 
+			 * the part where the slob allocator allocates slobs. I cop
+			 /*
 			slob_t *next;
 			
 			if (!min_fit) { //Was no suitable slob found?
